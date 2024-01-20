@@ -13,7 +13,7 @@ A class to abstract the Mersenne Twister random number generator
 //#define arrayLength 1024*1e5
 //#define rngPerThread arrayLength/gridSize
 //#define bufferSize arrayLength * sizeof(unsigned char)
-#define MT_NN 19
+#define MT_NN 7
 #define MT_WMASK 0xFFFFFFFFU
 
 // Struct to hold Mersenne Twister parameters

@@ -22,12 +22,12 @@ double calculateMAE(const std::vector<double>& predictions) {
     return mae;
 }
 
-std::vector<int> createRoundedExponentialVector(const double initial_value, const double final_value, const int number_of_elements) {
+std::vector<long> createRoundedExponentialVector(const double initial_value, const double final_value, const int number_of_elements) {
     // Calculate the factor
     const double factor = std::pow(final_value / initial_value, 1.0 / (number_of_elements - 1));
 
     // Create and fill the vector
-    std::vector<int> exponential_vector;
+    std::vector<long> exponential_vector;
     exponential_vector.reserve(number_of_elements);
 
     double current_value = initial_value;

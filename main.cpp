@@ -40,11 +40,11 @@ int main() {
     const double final_value = 1e8;
     const int number_of_elements = 100;
 
-    std::vector<int> exponential_vector = createRoundedExponentialVector(initial_value, final_value, number_of_elements);
+    std::vector<long> exponential_vector = createRoundedExponentialVector(initial_value, final_value, number_of_elements);
 
     //MT_1->setSeed(10);
     //Run MC simulation with different number of vars
-    for (int iterations : exponential_vector) {
+    for (long iterations : exponential_vector) {
         //Empty the buffer vectors
         results.clear();
         time.clear();

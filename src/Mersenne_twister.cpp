@@ -42,7 +42,7 @@ MetalMT::MetalMT(MTL::Device *device, int seed): _seed(seed){
     _max_available_threads = _mAddFunctionPSO->maxTotalThreadsPerThreadgroup();
 
     // Allocate the _MT_state_buffer based on available threads
-    _MT_state_buffer = new unsigned int[_max_available_threads * (MT_NN + 1)];
+    _MT_state_buffer = new unsigned int[_max_available_threads * (MT_NN + 1) * 100];
 
     // Create a command queue
     _mCommandQueue = _mDevice->newCommandQueue();
@@ -53,7 +53,7 @@ MetalMT::MetalMT(MTL::Device *device, int seed): _seed(seed){
 
     //Allocate buffers to hold initial data and the results
     _d_MT =             _mDevice->newBuffer(sizeof(mt_struct_stripped)*_max_available_threads, MTL::ResourceStorageModeShared);
-    _MT_state =         _mDevice->newBuffer(sizeof(unsigned int) * _max_available_threads * (MT_NN + 1), MTL::ResourceStorageModeShared);
+    _MT_state =         _mDevice->newBuffer(sizeof(unsigned int) * _max_available_threads * (MT_NN + 1) * 100, MTL::ResourceStorageModeShared);
     _n_rng_per_thread = _mDevice->newBuffer(sizeof(unsigned int), MTL::ResourceStorageModeShared);
     _n_threads =        _mDevice->newBuffer(sizeof(unsigned int), MTL::ResourceStorageModeShared);
 
@@ -120,16 +120,16 @@ void MetalMT::setSeed(int seed){
     _seed = seed;
 
     int j;
-    for(int i = 0; i < _max_available_threads; ++i){
+    for(int i = 0; i < _max_available_threads*100; ++i){
         j = 0;
         _MT_state_buffer[i * (MT_NN + 1) + j] = i + _seed*_max_available_threads;
         for(j = 1; j < MT_NN; j++){
-           _MT_state_buffer[i * (MT_NN + 1) + j] = (1812433253U * (_MT_state_buffer[i*(MT_NN + 1) + j - 1] ^ (_MT_state_buffer[i*(MT_NN + 1) + j - 1] >> 30)) + j) & MT_WMASK;
+           _MT_state_buffer[(i%_max_available_threads) * (MT_NN + 1) + j] = (1812433253U * (_MT_state_buffer[i*(MT_NN + 1) + j - 1] ^ (_MT_state_buffer[i*(MT_NN + 1) + j - 1] >> 30)) + j) & MT_WMASK;
         }
-        _MT_state_buffer[i * (MT_NN + 1) + MT_NN] = 0;
+        _MT_state_buffer[(i%_max_available_threads) * (MT_NN + 1) + MT_NN] = 0;
    }
    //Save new initial state
-   memcpy(static_cast<unsigned int *>(_MT_state->contents()), _MT_state_buffer, sizeof(unsigned int) * _max_available_threads * (MT_NN + 1));
+   memcpy(static_cast<unsigned int *>(_MT_state->contents()), _MT_state_buffer, sizeof(unsigned int) * _max_available_threads * (MT_NN + 1)*100);
 }
 
 
@@ -166,21 +166,21 @@ void MetalMT::sendComputeCommand(int arrayLength){
 
 void MetalMT::encodeBernoulliCommand(MTL::ComputeCommandEncoder *computeEncoder){
     //Calculate threadgroup size and number of vars per thread based on array length
-    int threadgroupSize = _max_available_threads;
+    int threadgroupSize = _max_available_threads*100;
     int numVarsPerThread = std::ceil(static_cast<double>(_arrayLength) / threadgroupSize);
 
     //Set the compute pipeline state object for the encoder
     computeEncoder->setComputePipelineState(_mAddFunctionPSO);
 
     //Set the threadgroup size
-    MTL::Size GPUGridSize = MTL::Size::Make(_max_available_threads, 1, 1);
+    MTL::Size GPUGridSize = MTL::Size::Make(threadgroupSize, 1, 1);
 
     //Assign buffer to hold the number of vars per thread
     memcpy(_n_rng_per_thread->contents(), &numVarsPerThread, sizeof(numVarsPerThread));
-    memcpy(_n_threads->contents(), &_max_available_threads, sizeof(_max_available_threads));
+    memcpy(_n_threads->contents(), &threadgroupSize, sizeof(_max_available_threads));
     
     //Set the threadgroup size
-    MTL::Size threadGroupSize_inp = MTL::Size::Make(1, 1, 1);
+    MTL::Size threadGroupSize_inp = MTL::Size::Make(128, 1, 1);
 
     //Allocate buffer to hold the results
     _mResultB = _mDevice->newBuffer(sizeof(unsigned char)*numVarsPerThread*threadgroupSize, MTL::ResourceStorageModeShared);
